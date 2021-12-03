@@ -1,0 +1,33 @@
+.program mcpclock
+
+.define public T1 1
+.define public T2 2
+    
+    set pindirs, 1
+.wrap_target
+again:
+    set pins, 1 [1]
+    set pins, 0 
+    jmp again
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+static inline void mcpclock_init(PIO pio, uint sm, uint offset, uint pin, float freq) {
+    gpio_set_slew_rate(pin, GPIO_SLEW_RATE_FAST);
+    gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_12MA);
+    pio_gpio_init(pio, pin);
+    // pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_sm_config c = mcpclock_program_get_default_config(offset);
+    // sm_config_set_sideset_pins(&c, pin);
+    sm_config_set_set_pins(&c, pin, 1);
+    float div = clock_get_hz(clk_sys) / (freq * (mcpclock_T1 + 3));
+    // float div = 2.5;
+    sm_config_set_clkdiv(&c, div);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+%}
